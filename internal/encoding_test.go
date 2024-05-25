@@ -9,7 +9,7 @@ import (
 )
 
 type BaseModel struct {
-	ID string `clover:""`
+	ID string `clover:"_id" json:"cloverId"`
 }
 
 type TestStruct struct {
@@ -69,7 +69,7 @@ func TestNormalize(t *testing.T) {
 
 	require.Nil(t, m["uint"]) // testing omitempty
 	require.Equal(t, m["IntPtr"], int64(100))
-	require.Equal(t, m["ID"], "UID")
+	require.Equal(t, m["_id"], "UID")
 
 	s1 := &TestStruct{}
 	err = Convert(m, s1)

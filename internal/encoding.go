@@ -168,10 +168,13 @@ func Normalize(value interface{}) (interface{}, error) {
 	return nil, fmt.Errorf("invalid dtype %s", rType.Name())
 }
 
-func createRenameMap(rv reflect.Value) map[string]string {
-	renameMap := make(map[string]string)
+func createRenameMap(rv reflect.Value, renameMap map[string]string) map[string]string {
 	for i := 0; i < rv.NumField(); i++ {
 		fieldType := rv.Type().Field(i)
+		if fieldType.Anonymous {
+			createRenameMap(rv.Field(i), renameMap)
+			continue
+		}
 
 		renameTo := fieldType.Name
 		renameFrom := fieldType.Name
@@ -205,7 +208,7 @@ func rename(fields map[string]interface{}, v interface{}) map[string]interface{}
 		return nil
 	}
 
-	renameMap := createRenameMap(rv)
+	renameMap := createRenameMap(rv, make(map[string]string))
 	m := make(map[string]interface{})
 	for key, value := range fields {
 		renamedFieldName := renameMap[key]
