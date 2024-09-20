@@ -1494,6 +1494,40 @@ func TestIndexQueryWithSort(t *testing.T) {
 	})
 }
 
+func checkUniqueTimestamps(db *c.DB) {
+	// Retrieve all documents from the collection
+	allDocs, err := db.FindAll(q.NewQuery("test"))
+	if err != nil {
+		fmt.Println("Error retrieving documents:", err)
+		return
+	}
+
+	// Use a map to track timestamps
+	timestamps := make(map[time.Time]bool)
+
+	// Check for duplicate timestamps
+	hasDuplicate := false
+	for _, doc := range allDocs {
+		// Get the timestamp from the document
+		timestamp := doc.Get("timestamp").(time.Time)
+
+		// Check if timestamp is already in the map
+		if timestamps[timestamp] {
+			hasDuplicate = true
+		} else {
+			// Add timestamp to the map if it's unique
+			timestamps[timestamp] = true
+		}
+	}
+
+	if hasDuplicate {
+		fmt.Println("\n**There are duplicate timestamps!**")
+	} else {
+		fmt.Println("\n**All timestamps are unique.**")
+	}
+	fmt.Println()
+}
+
 func TestPagedQueryUsingIndex(t *testing.T) {
 	runCloverTest(t, func(t *testing.T, db *c.DB) {
 		err := db.CreateCollection("test")
@@ -1507,7 +1541,11 @@ func TestPagedQueryUsingIndex(t *testing.T) {
 		n := 10003
 		for i := 0; i < n; i++ {
 			doc := d.NewDocument()
-			doc.Set("timestamp", time.Now())
+			// Old code that caused duplicates:
+			// doc.Set("timestamp", time.Now())
+
+			// New code to ensure unique timestamps:
+			doc.Set("timestamp", time.Now().Add(time.Duration(i)*time.Nanosecond))
 
 			if len(docs) == 1024 {
 				err := db.Insert("test", docs...)
@@ -1527,6 +1565,7 @@ func TestPagedQueryUsingIndex(t *testing.T) {
 			require.NoError(t, err)
 		}
 
+		checkUniqueTimestamps(db)
 		sortOpt := q.SortOption{Field: "timestamp", Direction: -1}
 
 		count := 0
