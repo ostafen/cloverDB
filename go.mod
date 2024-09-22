@@ -3,6 +3,7 @@ module github.com/ostafen/clover/v2
 go 1.13
 
 require (
+	git.mills.io/prologic/bitcask v1.0.2
 	github.com/brianvoe/gofakeit/v6 v6.23.2
 	github.com/dgraph-io/badger/v4 v4.2.0
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect

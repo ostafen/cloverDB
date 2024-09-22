@@ -1,4 +1,10 @@
+*~
+*.db
+*.bak
 *.swp
+**/.DS_Store
 
+/go.work*
+/.vscode
 /clover-db/
 /dump.json

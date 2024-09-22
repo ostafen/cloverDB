@@ -22,6 +22,7 @@ import (
 	q "github.com/ostafen/clover/v2/query"
 	badgerstore "github.com/ostafen/clover/v2/store/badger"
 	"github.com/ostafen/clover/v2/store/bbolt"
+	bitcaskstore "github.com/ostafen/clover/v2/store/bitcask"
 )
 
 const (
@@ -49,6 +50,14 @@ func getBadgerDB(dir string) (*c.DB, error) {
 	return c.OpenWithStore(store)
 }
 
+func getBitcaskDB(dir string) (*c.DB, error) {
+	store, err := bitcaskstore.Open(dir)
+	if err != nil {
+		return nil, err
+	}
+	return c.OpenWithStore(store)
+}
+
 func getBBoltDB(dir string) (*c.DB, error) {
 	store, err := bbolt.Open(dir)
 	if err != nil {
@@ -57,22 +66,28 @@ func getBBoltDB(dir string) (*c.DB, error) {
 	return c.OpenWithStore(store)
 }
 
-func getDBFactories() []dbFactory {
-	return []dbFactory{getBadgerDB, getBBoltDB}
+func getDBFactories() map[string]dbFactory {
+	return map[string]dbFactory{
+		"badger":  getBadgerDB,
+		"bbolt":   getBBoltDB,
+		"bitcask": getBitcaskDB,
+	}
 }
 
 func runCloverTest(t *testing.T, test func(t *testing.T, db *c.DB)) {
-	for _, createDB := range getDBFactories() {
-		dir, err := os.MkdirTemp("", "clover-test")
-		require.NoError(t, err)
+	for name, createDB := range getDBFactories() {
+		t.Run(name, func(t *testing.T) {
+			dir, err := os.MkdirTemp("", "clover-test")
+			require.NoError(t, err)
 
-		db, err := createDB(dir)
-		require.NoError(t, err)
+			db, err := createDB(dir)
+			require.NoError(t, err)
 
-		test(t, db)
+			test(t, db)
 
-		require.NoError(t, db.Close())
-		require.NoError(t, os.RemoveAll(dir))
+			require.NoError(t, db.Close())
+			require.NoError(t, os.RemoveAll(dir))
+		})
 	}
 }
 
