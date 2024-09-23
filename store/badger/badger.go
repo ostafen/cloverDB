@@ -14,6 +14,9 @@ type badgerStore struct {
 	db     *badger.DB
 	chWg   sync.WaitGroup
 	chQuit chan struct{}
+
+	gcInterval     time.Duration
+	gcDiscardRatio float64
 }
 
 func (store *badgerStore) Begin(update bool) (store.Tx, error) {
@@ -110,17 +113,17 @@ func OpenWithOptions(opts badger.Options) (store.Store, error) {
 	}
 
 	dataStore := &badgerStore{
-		db:     db,
-		chQuit: make(chan struct{}, 1),
+		db:             db,
+		chQuit:         make(chan struct{}, 1),
+		gcInterval:     time.Minute * 5,
+		gcDiscardRatio: 0.5,
 	}
 	dataStore.startGC()
 	return dataStore, nil
 }
 
-const (
-	GCReclaimInterval = time.Minute * 5
-	GCDiscardRatio    = 0.5
-)
+func (store *badgerStore) SetGCReclaimInterval(duration time.Duration) { store.gcInterval = duration }
+func (store *badgerStore) SetGCDiscardRatio(ratio float64)             { store.gcDiscardRatio = ratio }
 
 func (store *badgerStore) startGC() {
 	store.chWg.Add(1)
@@ -128,7 +131,7 @@ func (store *badgerStore) startGC() {
 	go func() {
 		defer store.chWg.Done()
 
-		ticker := time.NewTicker(GCReclaimInterval)
+		ticker := time.NewTicker(store.gcInterval)
 		defer ticker.Stop()
 
 		for {
@@ -137,7 +140,7 @@ func (store *badgerStore) startGC() {
 				return
 
 			case <-ticker.C:
-				err := store.db.RunValueLogGC(GCDiscardRatio)
+				err := store.db.RunValueLogGC(store.gcDiscardRatio)
 				if err != nil && errors.Is(err, badger.ErrNoRewrite) {
 					log.Printf("RunValueLogGC(): %s\n", err.Error())
 				}
