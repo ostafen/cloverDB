@@ -1223,6 +1223,51 @@ func TestExportAndImportCollection(t *testing.T) {
 
 			require.Equal(t, todo1, todo2)
 		}
+
+		exportFilePath = exportPath + "dualExportByquery.json"
+		err = db.CreateCollection("dualExport")
+		require.NoError(t, err)
+		defer db.DropCollection("dualExport")
+
+		doc1 := d.NewDocument()
+		doc1.Set("title", "dualExport")
+		doc1.Set("completed", false)
+		doc1.Set("status", 1)
+		doc2 := d.NewDocument()
+		doc2.Set("title", "dualExport")
+		doc2.Set("completed", true)
+		doc2.Set("status", 0)
+		err = db.Insert("dualExport", doc1, doc2)
+		require.NoError(t, err)
+
+		err = db.ExportCollectionByQuery(
+			q.NewQuery("dualExport").Where(q.Field("status").Eq(0)),
+			exportFilePath,
+		)
+		require.NoError(t, err)
+
+		err = db.ImportCollection("dualExportByquery", exportFilePath)
+		require.NoError(t, err)
+		defer db.DropCollection("dualExportByquery")
+
+		docs, err = db.FindAll(q.NewQuery("dualExport").Where(q.Field("status").Eq(0)).Sort())
+		require.NoError(t, err)
+
+		importDocs, err = db.FindAll(q.NewQuery("dualExportByquery").Sort())
+		require.NoError(t, err)
+
+		require.Equal(t, len(docs), len(importDocs))
+
+		type dual struct {
+			Title     string `json:"title" clover:"title"`
+			Completed bool   `json:"completed,omitempty" clover:"completed"`
+			Status    uint   `json:"status" clover:"status"`
+		}
+		dual1 := &dual{}
+		dual2 := &dual{}
+		require.NoError(t, docs[0].Unmarshal(dual1))
+		require.NoError(t, importDocs[0].Unmarshal(dual2))
+		require.Equal(t, dual1, dual2)
 	})
 }
 

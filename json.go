@@ -37,6 +37,24 @@ func (db *DB) ExportCollection(collectionName string, exportPath string) error {
 	return os.WriteFile(exportPath, jsonString, os.ModePerm)
 }
 
+// ExportCollectionByQuery exports a dual collection by query to a JSON file.
+func (db *DB) ExportCollectionByQuery(q *query.Query, exportPath string) error {
+	dualCollection := "dual_" + NewObjectId()
+
+	err := db.CreateCollectionByQuery(dualCollection, q)
+	if err != nil {
+		return err
+	}
+	defer db.DropCollection(dualCollection)
+
+	err = db.ExportCollection(dualCollection, exportPath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // ImportCollection imports a collection from a JSON file.
 func (db *DB) ImportCollection(collectionName string, importPath string) error {
 	file, err := os.Open(importPath)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	c "github.com/ostafen/clover/v2"
 	d "github.com/ostafen/clover/v2/document"
@@ -48,5 +49,37 @@ func main() {
 	todos, _ = db.FindAll(query.NewQuery("todos"))
 	for _, todo := range todos {
 		fmt.Printf("title: %v, userId: %v\n", todo.Get("title"), todo.Get("userId"))
+	}
+
+	exists, err := db.HasCollection("dualCollection")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if exists {
+		err = db.DropCollection("dualCollection")
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	err = db.CreateCollectionByQuery(
+		"dualCollection",
+		query.NewQuery("todos").Where(query.Field("completed").Eq(true)).Limit(1),
+	)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		collections, err := db.ListCollections()
+		if err != nil {
+			log.Fatal(err)
+		}
+		for k, v := range collections {
+			fmt.Printf("collection_%d: %s\n", k, v)
+		}
+	}
+
+	dualTodos, _ := db.FindAll(query.NewQuery("dualCollection"))
+	for _, v := range dualTodos {
+		fmt.Printf("title: %v, completed: %v\n", v.Get("title"), v.Get("completed"))
 	}
 }
