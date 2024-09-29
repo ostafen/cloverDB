@@ -122,6 +122,11 @@ func (doc *Document) SetAll(values map[string]interface{}) {
 	}
 }
 
+// GetAll returns a map containing all the fields of the document.
+func (doc *Document) GetAll() map[string]interface{} {
+	return doc.fields
+}
+
 // ToMap returns a map of all available fields in the document. Nested fields are represented by sub-maps. This is a deep copy, but values are not cloned.
 func (doc *Document) ToMap() map[string]interface{} {
 	return util.CopyMap(doc.fields)
