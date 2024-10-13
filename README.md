@@ -51,7 +51,7 @@ To store documents inside collections, you have to open a Clover database using 
 import (
   "log"
   "github.com/dgraph-io/badger/v4"
-  c "github.com/ostafen/clover"
+  c "github.com/ostafen/clover/v2"
   badgerstore "github.com/ostafen/clover/v2/store/badger"
 )
 
@@ -72,11 +72,17 @@ defer db.Close() // remember to close the db when you have done
 CloverDB stores documents inside collections. Collections are the **schemaless** equivalent of tables in relational databases. A collection is created by calling the `CreateCollection()` function on a database instance. New documents can be inserted using the `Insert()` or `InsertOne()` methods. Each document is uniquely identified by a **Version 4 UUID** stored in the **_id** special field and generated during insertion.
 
 ```go
+import (
+  c "github.com/ostafen/clover/v2"
+  // import document module
+  d "github.com/ostafen/clover/v2/document"
+)
+
 db, _ := c.Open("clover-db")
 db.CreateCollection("myCollection") // create a new collection named "myCollection"
 
 // insert a new document inside the collection
-doc := c.NewDocument()
+doc := d.NewDocument()
 doc.Set("hello", "clover!")
 
 // InsertOne returns the id of the inserted document
@@ -89,6 +95,11 @@ fmt.Println(docId)
 CloverDB is capable of easily importing and exporting collections to JSON format regardless of the storage engine used.
 
 ```go
+import (
+//import query module
+  q "github.com/ostafen/clover/v2/query"
+)
+
 // dump the content of the "todos" collection in a "todos.json" file
 db.ExportCollection("todos", "todos.json")
 
@@ -98,7 +109,7 @@ db.ExportCollection("todos", "todos.json")
 db.DropCollection("todos")
 db.ImportCollection("todos", "todos.json")
 
-docs, _ := db.FindAll(c.NewQuery("todos"))
+docs, _ := db.FindAll(q.NewQuery("todos"))
 for _, doc := range docs {
   log.Println(doc)
 }
@@ -113,7 +124,7 @@ CloverDB is equipped with a fluent and elegant API to query your data. A query i
 The `FindAll()` method is used to retrieve all documents satisfying a given query.
 
 ```go
-docs, _ := db.FindAll(c.NewQuery("myCollection"))
+docs, _ := db.FindAll(q.NewQuery("myCollection"))
 
 todo := &struct {
     Completed bool   `clover:"completed"`
@@ -135,25 +146,25 @@ In order to filter the documents returned by `FindAll()`, you have to specify a 
 The following example shows how to build a simple Criteria, matching all the documents having the **completed** field equal to true.
 
 ```go
-db.FindAll(c.NewQuery("todos").Where(c.Field("completed").Eq(true)))
+db.FindAll(q.NewQuery("todos").Where(q.Field("completed").Eq(true)))
 
 // or equivalently
-db.FindAll(c.NewQuery("todos").Where(c.Field("completed").IsTrue()))
+db.FindAll(q.NewQuery("todos").Where(q.Field("completed").IsTrue()))
 ```
 
 In order to build very complex queries, we chain multiple Criteria objects by using the `And()` and `Or()` methods, each returning a new Criteria obtained by applying the corresponding logical operator.
 
 ```go
 // find all completed todos belonging to users with id 5 and 8
-db.FindAll(c.NewQuery("todos").Where(c.Field("completed").Eq(true).And(c.Field("userId").In(5, 8))))
+db.FindAll(q.NewQuery("todos").Where(c.Field("completed").Eq(true).And(q.Field("userId").In(5, 8))))
 ```
 
 Naturally, you can also create Criteria involving multiple fields. CloverDB provides you with two equivalent ways to accomplish this:
 
 ```go
-db.FindAll(c.NewQuery("myCollection").Where(c.Field("myField1").Gt(c.Field("myField2"))))
+db.FindAll(q.NewQuery("myCollection").Where(q.Field("myField1").Gt(q.Field("myField2"))))
 // or, if you prefer
-db.FindAll(c.NewQuery("myCollection").Where(c.Field("myField1").Gt("$myField2")))
+db.FindAll(q.NewQuery("myCollection").Where(q.Field("myField1").Gt("$myField2")))
 ```
 
 ### Sorting Documents
@@ -163,7 +174,7 @@ A sorting direction can be one of 1 or -1, respectively corresponding to ascendi
 
 ```go
 // Find any todo belonging to the most recent inserted user
-db.FindFirst(c.NewQuery("todos").Sort(c.SortOption{"userId", -1}))
+db.FindFirst(q.NewQuery("todos").Sort(c.SortOption{"userId", -1}))
 ```
 
 ### Skip/Limit Documents
@@ -173,7 +184,7 @@ Sometimes, it can be useful to discard some documents from the output, or simply
 ```go
 // discard the first 10 documents from the output,
 // also limiting the maximum number of query results to 100
-db.FindAll(c.NewQuery("todos").Skip(10).Limit(100))
+db.FindAll(q.NewQuery("todos").Skip(10).Limit(100))
 ```
 
 ### Update/Delete Documents
@@ -185,10 +196,10 @@ The `Update()` method is used to modify specific fields of documents in a collec
 updates := make(map[string]interface{})
 updates["completed"] = true
 
-db.Update(c.NewQuery("todos").Where(c.Field("userId").Eq(1)), updates)
+db.Update(q.NewQuery("todos").Where(q.Field("userId").Eq(1)), updates)
 
 // delete all todos belonging to users with id 5 and 8
-db.Delete(c.NewQuery("todos").Where(c.Field("userId").In(5,8)))
+db.Delete(q.NewQuery("todos").Where(q.Field("userId").In(5,8)))
 ```
 
 To update or delete a single document using a specific document id, use `UpdateById()` or `DeleteById()`, respectively:
@@ -218,8 +229,8 @@ db.CreateIndex("myCollection", "myField")
 Assume you have the following query:
 
 ```go
-criteria := c.Field("myField").Gt(a).And(c.Field("myField").Lt(b))
-db.FindAll(c.NewQuery("myCollection").Where(criteria).Sort(c.SortOption{"myField", -1}))
+criteria := q.Field("myField").Gt(a).And(q.Field("myField").Lt(b))
+db.FindAll(q.NewQuery("myCollection").Where(criteria).Sort(q.SortOption{"myField", -1}))
 ```
 
 where **a** and **b** are values of your choice. CloverDB will use the created index both to perform the range query and to return results in sorted order.
@@ -231,7 +242,7 @@ Internally, CloverDB supports the following primitive data types: **int64**, **u
 For example, consider the following snippet, which sets an uint8 value on a given document field:
 
 ```go
-doc := c.NewDocument()
+doc := d.NewDocument()
 doc.Set("myField", uint8(10)) // "myField" is automatically promoted to uint64
 
 fmt.Println(doc.Get("myField").(uint64))
@@ -260,7 +271,7 @@ fmt.Println(doc.Get("ptr1") == nil)
 Invalid types leaves the document untouched:
 
 ```go
-doc := c.NewDocument()
+doc := d.NewDocument()
 doc.Set("myField", make(chan struct{}))
 
 log.Println(doc.Has("myField")) // will output false
