@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofrs/uuid/v5"
 	"github.com/ostafen/clover/v2/internal"
 	"github.com/ostafen/clover/v2/util"
 )
@@ -170,8 +169,7 @@ func (doc *Document) Unmarshal(v interface{}) error {
 }
 
 func isValidObjectId(id string) bool {
-	_, err := uuid.FromString(id)
-	return err == nil
+	return id != ""
 }
 
 func Validate(doc *Document) error {

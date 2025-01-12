@@ -1638,6 +1638,31 @@ func TestCreateCollectionByQuery(t *testing.T) {
 	})
 }
 
+func TestCustomID(t *testing.T) {
+	runCloverTest(t, func(t *testing.T, db *c.DB) {
+		collection := "test_custom_id"
+		err := db.CreateCollection(collection)
+		require.NoError(t, err)
+
+		id := "custom_id"
+		m := map[string]interface{}{
+			"_id":      id,
+			"itWorks?": true,
+		}
+		doc := d.NewDocument()
+		doc.SetAll(m)
+
+		insertedID, err := db.InsertOne(collection, doc)
+		require.NoError(t, err)
+		require.Equal(t, id, insertedID)
+
+		foundDoc, err := db.FindById(collection, id)
+		require.NoError(t, err)
+		require.NotNil(t, foundDoc)
+		require.Equal(t, m, foundDoc.AsMap())
+	})
+}
+
 /*
 func TestInMemoryMode(t *testing.T) {
 	db, err := c.Open("clover-db", c.InMemoryMode(true))
