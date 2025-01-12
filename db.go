@@ -32,8 +32,9 @@ type docConsumer func(doc *d.Document) error
 
 // DB represents the entry point of each clover database.
 type DB struct {
-	store  store.Store
-	closed uint32
+	store       store.Store
+	closed      uint32
+	IDGenerator func() string
 }
 
 type collectionMetadata struct {
@@ -146,8 +147,11 @@ func NewObjectId() string {
 func (db *DB) Insert(collectionName string, docs ...*d.Document) error {
 	for _, doc := range docs {
 		if !doc.Has(d.ObjectIdField) || doc.Get(d.ObjectIdField) == "" {
-			objectId := NewObjectId()
-			doc.Set(d.ObjectIdField, objectId)
+			if db.IDGenerator == nil {
+				doc.Set(d.ObjectIdField, NewObjectId())
+				continue
+			}
+			doc.Set(d.ObjectIdField, db.IDGenerator())
 		}
 	}
 
